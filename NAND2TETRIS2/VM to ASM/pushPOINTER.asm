@@ -1,0 +1,8 @@
+//PUSH POINTER 0-1
+@THIS
+D=M
+@SP
+A=M
+M=D
+@SP
+M=M+1

@@ -1,0 +1,17 @@
+//eq
+@SP
+M=M-1
+A=M
+D=M
+@SP
+A=M-1
+D=M-D
+@DENIZ
+D;JEQ
+@SP
+A=M-1
+M=0
+(DENIZ)
+@SP
+A=M-1
+M=-1

@@ -1,0 +1,15 @@
+//POP THIS-THAT-LCL-ARG 5
+@5
+D=A
+@THIS
+D=D+M
+@R13
+M=D
+@SP
+A=M
+D=M
+@R13
+A=M
+M=D
+@SP
+M=M-1

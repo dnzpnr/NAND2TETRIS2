@@ -1,0 +1,132 @@
+
+(define (arithmetic-memory-vmcommand x)
+  (cond ((= (string-length x) 2)
+         (if (member? x (list "eq" "gt" "or" "lt")) (vm-double-arithmetic x) 'error_for_length_2))
+        ((= (string-length x) 3)
+         (if (member? x (list "add" "sub" "neg" "and" "not")) (vm-triple-arithmetic x) 'error_for_length_3))
+        ((> (string-length x) 4)
+         (cond ((equal? (substring x 0 3) "pop") (vm-pop (substring x 3 (string-length x))))
+               ((equal? (substring x 0 4) "push") (vm-push (substring x 4 (string-length x))))
+               (else error 'invalid_input_for_pop&push)))
+        (else error 'invalid-vm-command-for-arithmetic-memory)))
+
+
+
+
+(define (member? x lst)
+  (if (empty? lst)
+    #f
+    (if (equal? x (car lst))
+      #t
+      (begin
+        (if (list? (car lst))
+          (let ((r (member? x (car lst))))
+               (if r
+                 r
+                 (member? x (cdr lst))))
+          (member? x (cdr lst)))))))
+
+(define (vm-push x)
+  (cond ((equal? (substring x 0 4) "temp")
+         (vm-push-1 "TEMP" (substring x 4 (string-length x))))
+        ((equal? (substring x 0 4) "this")
+         (vm-push-2 "THIS" (substring x 4 (string-length x))))
+        ((equal? (substring x 0 4) "that")
+         (vm-push-2 "THAT" (substring x 4 (string-length x))))
+        ((equal? (substring x 0 5) "local")
+         (vm-push-2 "LCL" (substring x 5 (string-length x))))
+        ((equal? (substring x 0 6) "static")
+         (vm-push-1 "STATIC" (substring x 6 (string-length x))))
+        ((equal? (substring x 0 8) "pointer0")
+         (vm-push-3 "THIS"))
+        ((equal? (substring x 0 8) "pointer1")
+         (vm-push-3 "THAT"))
+        ((equal? (substring x 0 8) "argument")
+         (vm-push-2 "ARG" (substring x 8 (string-length x))))
+        ((equal? (substring x 0 8) "constant")
+         (vm-push-4 (substring x 8 (string-length x))))
+        (else error 'invalid-vm-command-for-push)))
+
+(define (vm-push-1 x y)
+  (string-append (string-append "@" y) "\n" "D=A" "\n" (string-append "@" x) "\n" "D=D+A" "\n" "A=D" "\n" "D=M" "\n" "@SP" "\n" "A=M" "\n" "M=D" "\n" "@SP" "\n" "M=M+1"))
+
+(define (vm-push-2 x y)
+  (string-append (string-append "@" y) "\n" "D=A" "\n" (string-append "@" x) "\n" "D=D+M" "\n" "A=D" "\n" "D=M" "\n" "@SP" "\n" "A=M" "\n" "M=D" "\n" "@SP" "\n" "M=M+1"))
+
+(define (vm-push-3 x)
+  (string-append (string-append "@" x) "\n" "D=M" "\n" "@SP" "\n" "A=M" "\n" "M=D" "\n" "@SP" "\n" "M=M+1"))
+
+(define (vm-push-4 x)
+  (string-append (string-append "@" x) "\n" "D=A" "\n" "@SP" "\n" "A=M" "\n" "M=D" "\n" "@SP" "\n" "M=M+1"))
+
+(define (vm-pop x)
+  (cond ((equal? (substring x 0 4) "temp")
+         (vm-pop-1 "TEMP" (substring x 4 (string-length x))))
+        ((equal? (substring x 0 4) "this")
+         (vm-pop-3 "THIS" (substring x 4 (string-length x))))
+        ((equal? (substring x 0 4) "that")
+         (vm-pop-3 "THAT" (substring x 4 (string-length x))))
+        ((equal? (substring x 0 5) "local")
+         (vm-pop-3 "LCL" (substring x 5 (string-length x))))
+        ((equal? (substring x 0 6) "static")
+         (vm-pop-1 "STATIC" (substring x 6 (string-length x))))
+        ((equal? (substring x 0 8) "pointer0")
+         (vm-pop-2 "THIS"))
+        ((equal? (substring x 0 8) "pointer1")
+         (vm-pop-2 "THAT"))
+        ((equal? (substring x 0 8) "argument")
+         (vm-pop-3 "ARG" (substring x 8 (string-length x))))
+        (else error 'invalid-vm-command-for-pop)))
+
+(define (vm-pop-1 x y)
+  (string-append (string-append "@" y) "\n" "D=A" "\n" (string-append "@" x) "\n" "D=D+A" "\n" "@R13" "\n" "M=D" "\n" "@SP" "\n" "A=M-1" "\n" "D=M" "\n" "@R13" "\n" "A=M" "\n" "M=D" "\n" "@SP" "\n" "M=M-1"))
+
+(define (vm-pop-3 x y)
+  (string-append (string-append "@" y) "\n" "D=A" "\n" (string-append "@" x) "\n" "D=D+M" "\n" "@R13" "\n" "M=D" "\n" "@SP" "\n" "A=M-1" "\n" "D=M" "\n" "@R13" "\n" "A=M" "\n" "M=D" "\n" "@SP" "\n" "M=M-1"))
+
+(define (vm-pop-2 x)
+  (string-append "@SP" "\n" "M=M-1" "\n" "A=M" "\n" "D=M" "\n" (string-append "@" x) "\n" "M=D"))
+
+
+(define (vm-triple-arithmetic x)
+  (cond ((equal? x "add")
+         (string-append "@SP" "\n" "M=M-1" "\n" "A=M" "\n" "D=M" "\n" "@SP" "\n" "A=M-1" "\n" "M=D+M"))
+        ((equal? x "sub")
+         (string-append "@SP" "\n" "M=M-1" "\n" "A=M" "\n" "D=M" "\n" "@SP" "\n" "A=M-1" "\n" "M=M-D"))
+        ((equal? x "neg")
+         (string-append "@SP" "\n" "A=M-1" "\n" "D=M" "\n" "@SP" "\n" "A=M-1" "\n" "M=-D"))
+        ((equal? x "and")
+        (string-append "@SP" "\n" "M=M-1" "\n" "A=M" "\n" "D=M" "\n" "@SP" "\n" "A=M-1" "\n" "M=M&D"))
+        ((equal? x "not")
+         (string-append "@SP" "\n" "A=M-1" "\n" "M=!M"))
+        (else error 'invalid-input-for-triple-arithmetic)))
+(define counter 0)
+
+(define (vm-double-arithmetic x)
+  (set! counter (+ 1 counter))
+  (cond ((equal? x "eq")
+         (string-append "@SP" "\n" "M=M-1" "\n" "A=M" "\n" "D=M" "\n" "@SP" "\n" "A=M-1" "\n" "D=M-D" "\n" (string-append "@EQ" (number->string counter)) "\n" "D;JEQ" "\n" "@SP" "\n" "A=M-1" "\n" "M=0" "\n" (string-append "@EQEND" (number->string counter)) "\n" "0;JMP" "\n" (string-append "(EQ" (number->string counter) ")") "\n" "@SP" "\n" "A=M-1" "\n" "M=-1" "\n" (string-append "(EQEND" (number->string counter) ")")))
+        ((equal? x "gt")
+         (string-append "@SP" "\n" "M=M-1" "\n" "A=M" "\n" "D=M" "\n" "@SP" "\n" "A=M-1" "\n" "D=M-D" "\n" (string-append "@GT" (number->string counter)) "\n" "D;JGT" "\n" "@SP" "\n" "A=M-1" "\n" "M=0" "\n" (string-append "@GTEND" (number->string counter)) "\n" "0;JMP" "\n" (string-append "(GT" (number->string counter) ")") "\n" "@SP" "\n" "A=M-1" "\n" "M=-1" "\n" (string-append "(GTEND" (number->string counter) ")")))
+         ((equal? x "or")
+          (string-append "@SP" "\n" "M=M-1" "\n" "A=M" "\n" "D=M" "\n" "@SP" "\n" "A=M-1" "\n" "M=M|D"))
+        ((equal? x "lt")
+         (string-append "@SP" "\n" "M=M-1" "\n" "A=M" "\n" "D=M" "\n" "@SP" "\n" "A=M-1" "\n" "D=M-D" "\n" (string-append "@LT" (number->string counter)) "\n" "D;JLT" "\n" "@SP" "\n" "A=M-1" "\n" "M=0" "\n" (string-append "@LTEND" (number->string counter)) "\n" "0;JMP" "\n" (string-append "(LT" (number->string counter) ")") "\n" "@SP" "\n" "A=M-1" "\n" "M=-1" "\n" (string-append "(LTEND" (number->string counter) ")")))
+    (else error 'invalid-input-for-vm-double-arithmetic)))
+
+
+(require 2htdp/batch-io)
+
+
+(define (stripchars1 text chars)
+  (list->string (remove* (string->list chars) (string->list text))))
+
+
+(write-file "BasicTest.asm" (foldr string-append "" (map (lambda (x) (string-append (stripchars1 x "                 ") "\n")) (read-lines "/home/deniz/StackTest.vm"))))
+
+
+
+
+(require 2htdp/batch-io)
+
+(write-file "BasicTest(copy).asm" (foldr string-append "" (map (lambda (x) (string-append (arithmetic-memory-vmcommand x) "\n")) (read-lines "/home/deniz/BasicTest.asm"))))
